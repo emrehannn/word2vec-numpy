@@ -29,6 +29,7 @@ class Word2Vec:
     def compute_loss(self, target_score, negative_scores):
         # L = -log(target_score) - sum(log(1 - negative_scores))
         return -np.log(target_score) - np.sum(np.log(1 - negative_scores))
+        # -positive signal - negative signal
 
 
 
