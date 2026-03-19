@@ -1,12 +1,12 @@
 # data.py
 import numpy as np
-from hyperparams import CONTEXT_SIZE, EPOCHS
+from hyperparams import CONTEXT_SIZE
 
 with open("text8", "r") as f:
-    text = f.read()
+    text = f.read(1_000_000)
 
 
-vocabulary = set(text.split())
+vocabulary = sorted(set(text.split()))
 
 vocabularysize = len(vocabulary)
 # 253854
@@ -20,7 +20,7 @@ text_idx = np.array(text_idx)
  
 
 ## positive samples
-def generate_training_pairs():
+def get_positive_samples():
     for i in range(CONTEXT_SIZE, len(text_idx) - CONTEXT_SIZE):
         context = np.concatenate((text_idx[i - CONTEXT_SIZE: i], text_idx[i + 1 : i + CONTEXT_SIZE + 1]))
         target = text_idx[i]
