@@ -5,85 +5,48 @@ from data import vocabularysize
 
 
 class Word2Vec:
-    
     def __init__(self):
-        self.W_in = np.random.randn(vocabularysize, EMBEDDING_DIM)    # embedding matrices
+        self.W_in = np.random.randn(vocabularysize, EMBEDDING_DIM)     # input embeddings, one vector per word in the vocab
         self.W_out = np.random.randn(vocabularysize, EMBEDDING_DIM)
 
-    def softmax(self, x):
-        x = x - np.max(x)
-        return np.exp(x) / np.sum(np.exp(x))
+    def sigmoid(self, x):
+        return 1 / (1 + np.exp(-x))
+
+    def forward_pass(self, context, target, negatives):
+
+        # mean the context vectors into one in the Y axis. (2*context , embeddingdim) to (embeddingdim, )
+        self.hidden = np.mean(self.W_in[context], axis = 0)
+
+        # dot output matrix with hidden dimension values to get the score, both are (100, )
+        target_score = self.sigmoid(np.dot(self.W_out[target], self.hidden))
+
+        # its the same, but there are k negative scores and shape is thus (k, )
+        negative_scores = self.sigmoid(self.W_out[negatives] @ self.hidden)
+
+        return target_score, negative_scores
 
 
-    # forward pass
-    # hidden layer: h = mean of context picked from W_in
-    # scores: W_out @ h
-    # probabilities: softmax of scores
-
-    def forward_pass(self, context):
-        hidden = np.mean(self.W_in[context], axis=0)
-        # dot product of hidden layer and target embedding
-        score = np.dot(self.W_out, hidden)
-        # softmax score of every word in the vocabulary
-        probability = self.softmax(score)
-        return probability, hidden
-
-    # compute loss
-
-    def compute_loss(self, probability, target):
-        loss = -np.log(probability[target])
-        return loss
+    def compute_loss(self, target_score, negative_scores):
+        # L = -log(target_score) - sum(log(1 - negative_scores))
+        return -np.log(target_score) - np.sum(np.log(1 - negative_scores))
 
 
 
-    def backward_pass(self, probability, target, hidden, context):
-        # step 1  w.r.t scores dL/dS
-        one_hot_target = np.zeros(vocabularysize)
-        one_hot_target[target] = 1
-        d_scores = probability - one_hot_target # how wrong was each probability
+    def backward_pass(self, target, target_score, negative_scores, negatives, context):
 
-
-        #step 2 w.r.t output layer dL/dW_out = dS x h[j]
-        d_W_out = np.outer(d_scores, hidden) 
-    
-
-        #step 3 derivatife of loss w.r.t. hidden layer same as above,
-        #  but we blame hidden instead of output layer for the error. dL/dh = W_out.T @ d_scores
-        d_hidden = np.dot(self.W_out.T , d_scores)
-
-        #step 4 derivatife of loss w.r.t. input layer loss averaged over to hidden/size dL/(dW_in[context])
-        self.W_in[context] -= LEARNING_RATE * (d_hidden / len(context))
         
-        self.W_out -= d_W_out * LEARNING_RATE
+        target_error = target_score - 1
+        d_W_out = target_error * self.hidden
+        self.W_out[target] -= LEARNING_RATE * d_W_out
+        
+
+        negative_error = negative_scores
+        d_W_out_negatives = np.outer(negative_error, self.hidden) # only outer product gives (k, EMBEDDING_DIM) ...
+        self.W_out[negatives] -= LEARNING_RATE * d_W_out_negatives
 
 
+        d_hidden = target_error * self.W_out[target] + negative_error @ self.W_out[negatives]
+
+        self.W_in[context] -= LEARNING_RATE * (d_hidden / len(context))
 
 
-# forward notes
-# hidden   = mean(W_in[context])
-# scores   = W_out @ hidden
-# probs    = softmax(scores)
-# loss     = -log(probs[target])
-
-# backwards pass going reverse chain rule notes
-
-# step 1 loss to scores
-# how wrong was each score?
-# d_scores = probs - onehot(target)
-
-# scores = W_out @ hidden        ← one forward line, two things to blame
-
-# first blame W_out:    how much did W_out cause the wrong scores?
-# second — blame hidden:   how much did hidden cause the wrong scores?
-
-
-# step 2 scores to W_out
-# d_W_out = outer(d_scores, hidden) the amount of error in the score x how much weight it had = how much each weight contributed to the error
-
-# step 3 scores to hidden
-# how much did the hidden layer cause that wrongness?
-# d_hidden = W_out.T @ d_scores 
-
-# step 4 hidden to W_in
-# how much did each input word embedding cause that hidden error
-# d_W_in = d_hidden / context   (divide because forward has a mean of context size)

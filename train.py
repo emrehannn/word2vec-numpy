@@ -24,7 +24,3 @@ for epoch in range(EPOCHS):
 
 np.save("embeddings.npy", model.W_in)
 
-# STEPS FOR IMPROVEMENT
-
-# 1. negative sampling 
-# 2. batching
