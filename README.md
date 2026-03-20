@@ -1,4 +1,4 @@
-# Word2vecsubmission
+# word2vec-numpy
 
 Word2vec is an embedding model developed by Google. This is a base level implementation of CBOW only using numpy and text8 dataset by Matt Mahoney.
 
